@@ -17,4 +17,8 @@ public class LevelData : ScriptableObject
     public float bpm = 120;
     public float startDelay = 2f;
     public NoteData[] notes;
+
+    [Header("Rhythm Settings")]
+    public int beatsPerBar = 4; // Долей в такте
+    public int subdivisions = 4;
 }

@@ -73,6 +73,16 @@ public class LevelEditorWindow : EditorWindow
             timelinePosition = previewSource.time;
             Repaint();
         }
+
+            // Поля для настроек ритма
+        if (levelData != null)
+        {
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Rhythm Settings", EditorStyles.boldLabel);
+            levelData.bpm = EditorGUILayout.FloatField("BPM", levelData.bpm);
+            levelData.beatsPerBar = EditorGUILayout.IntField("Beats Per Bar", levelData.beatsPerBar);
+            levelData.subdivisions = EditorGUILayout.IntField("Subdivisions", levelData.subdivisions);
+        }
     }
 
     void DrawTimelineBackground(Rect timelineRect)
@@ -92,6 +102,41 @@ public class LevelEditorWindow : EditorWindow
             Handles.DrawLine(new Vector3(laneRect.x, laneRect.y), new Vector3(laneRect.x + laneRect.width, laneRect.y));
             Handles.DrawLine(new Vector3(laneRect.x, laneRect.y + laneRect.height), new Vector3(laneRect.x + laneRect.width, laneRect.y + laneRect.height));
         }
+
+            // Рисуем ритмические метки только если есть данные о ритме
+    if (levelData.bpm > 0 && levelData.beatsPerBar > 0)
+    {
+        float secondsPerBeat = 60f / levelData.bpm;
+        float secondsPerSubdivision = secondsPerBeat / levelData.subdivisions;
+        float totalTime = levelData.music != null ? levelData.music.length : 60f;
+
+        // Рассчитываем общее количество подразделений
+        int totalSubdivisions = Mathf.CeilToInt(totalTime / secondsPerSubdivision);
+
+        for (int i = 0; i < totalSubdivisions; i++)
+        {
+            float time = i * secondsPerSubdivision;
+            float xPos = timelineRect.x + time * timeScale;
+            
+            // Определяем тип линии
+            bool isBar = (i % (levelData.beatsPerBar * levelData.subdivisions)) == 0;
+            bool isBeat = (i % levelData.subdivisions) == 0;
+            
+            Color lineColor = isBar ? Color.yellow : 
+                            isBeat ? Color.red : 
+                            new Color(0.5f, 0.5f, 0.5f, 0.3f);
+            float lineHeight = isBar ? trackHeight : 
+                             isBeat ? trackHeight * 0.75f : 
+                             trackHeight * 0.5f;
+            float lineWidth = isBar ? 2f : 1f;
+
+            // Рисуем линию через Handles
+            Handles.color = lineColor;
+            Vector2 start = new Vector2(xPos, timelineRect.y);
+            Vector2 end = new Vector2(xPos, timelineRect.y + lineHeight);
+            Handles.DrawLine(start, end, lineWidth);
+        }
+    }
     }
 
     void DrawNotes(Rect timelineRect)
