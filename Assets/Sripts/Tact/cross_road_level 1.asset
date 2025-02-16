@@ -1,0 +1,84 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 328702279adad934b826d58251bd27bc, type: 3}
+  m_Name: cross_road_level 1
+  m_EditorClassIdentifier: 
+  music: {fileID: 8300000, guid: 7c56ab7d36789c440b2a1fec8bbd78ed, type: 3}
+  bpm: 120
+  startDelay: 2
+  notes:
+  - startTime: 0.16800003
+    duration: 0.5
+    trackIndex: 0
+  - startTime: 1.248
+    duration: 0.5
+    trackIndex: 0
+  - startTime: 2.16
+    duration: 0.5
+    trackIndex: 0
+  - startTime: 3.12
+    duration: 1.6720002
+    trackIndex: 0
+  - startTime: 5.488
+    duration: 0.5
+    trackIndex: 0
+  - startTime: 6.802
+    duration: 0.5
+    trackIndex: 0
+  - startTime: 7.8659997
+    duration: 2.1280005
+    trackIndex: 0
+  - startTime: 0.89599997
+    duration: 0.5
+    trackIndex: 1
+  - startTime: 1.8
+    duration: 0.5
+    trackIndex: 2
+  - startTime: 1.76
+    duration: 0.5
+    trackIndex: 1
+  - startTime: 3.0960004
+    duration: 1.8479999
+    trackIndex: 2
+  - startTime: 5.6879997
+    duration: 0.5
+    trackIndex: 2
+  - startTime: 11.84
+    duration: 0.5
+    trackIndex: 2
+  - startTime: 13.368
+    duration: 0.5
+    trackIndex: 2
+  - startTime: 15.264
+    duration: 0.5
+    trackIndex: 2
+  - startTime: 11.840001
+    duration: 0.5
+    trackIndex: 1
+  - startTime: 13.08
+    duration: 0.5
+    trackIndex: 1
+  - startTime: 14.152
+    duration: 2.12
+    trackIndex: 1
+  - startTime: 2.704
+    duration: 0.5
+    trackIndex: 3
+  - startTime: 3.744
+    duration: 0.5
+    trackIndex: 3
+  - startTime: 4.824
+    duration: 0.5
+    trackIndex: 3
+  - startTime: 5.7279997
+    duration: 0.5
+    trackIndex: 3
