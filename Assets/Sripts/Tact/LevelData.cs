@@ -8,6 +8,8 @@ public class NoteData
     public float startTime; // Время начала ноты в секундах
     public float duration; // Длительность ноты в секундах
     public int trackIndex; // Номер дорожки (0-4)
+
+    public bool spawned = false;
 }
 
 [CreateAssetMenu(fileName = "NewLevel", menuName = "Rhythm Level")]
@@ -21,4 +23,6 @@ public class LevelData : ScriptableObject
     [Header("Rhythm Settings")]
     public int beatsPerBar = 4; // Долей в такте
     public int subdivisions = 4;
+
+    public float audioOffset = 0;
 }

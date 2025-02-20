@@ -51,18 +51,24 @@ public class LevelEditorWindow : EditorWindow
         if (levelData.music != null)
             timelinePosition = EditorGUILayout.Slider("Time", timelinePosition, 0, levelData.music.length);
 
-        // Рассчитываем размеры таймлайна
+        // Размеры таймлайна
         float timelineWidth = (levelData.music != null) ? levelData.music.length * timeScale : position.width - 20;
+        float headerHeight = 20; // Высота заголовка с таймлайном
         float timelineHeight = trackCount * trackHeight;
+
+        // Отрисовка заголовка таймлайна с синхронизацией горизонтального скролла (используем scrollPosition.x)
+        Rect timelineHeaderRect = GUILayoutUtility.GetRect(timelineWidth, headerHeight);
+        DrawSongTimelineHeader(timelineHeaderRect, scrollPosition.x);
 
         GUILayout.Label("Timeline (левый клик: добавление/перемещение/изменение размера, правый клик: удаление)");
 
-        // Оборачиваем область таймлайна в горизонтальный scroll view
-        scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition, GUILayout.Height(timelineHeight + 20));
+        // Оборачиваем область дорожек и нот в scroll view
+        scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition, GUILayout.Height(timelineHeight + headerHeight + 20));
         Rect timelineRect = GUILayoutUtility.GetRect(timelineWidth, timelineHeight);
 
         DrawTimelineBackground(timelineRect);
         DrawNotes(timelineRect);
+        DrawTimelineCursor(timelineRect);  // Отрисовка вертикальной полоски на дорожках
         HandleNoteEvents(timelineRect);
 
         EditorGUILayout.EndScrollView();
@@ -74,7 +80,7 @@ public class LevelEditorWindow : EditorWindow
             Repaint();
         }
 
-            // Поля для настроек ритма
+        // Настройки ритма
         if (levelData != null)
         {
             EditorGUILayout.Space();
@@ -82,63 +88,105 @@ public class LevelEditorWindow : EditorWindow
             levelData.bpm = EditorGUILayout.FloatField("BPM", levelData.bpm);
             levelData.beatsPerBar = EditorGUILayout.IntField("Beats Per Bar", levelData.beatsPerBar);
             levelData.subdivisions = EditorGUILayout.IntField("Subdivisions", levelData.subdivisions);
+            levelData.audioOffset = EditorGUILayout.FloatField("Audio Offset", levelData.audioOffset);
         }
     }
 
+    /// <summary>
+    /// Отрисовывает заголовок таймлайна, где деления времени синхронизированы по горизонтали с областью дорожек.
+    /// </summary>
+    void DrawSongTimelineHeader(Rect headerRect, float horizontalOffset)
+    {
+        // Фон заголовка
+        EditorGUI.DrawRect(headerRect, new Color(0.15f, 0.15f, 0.15f));
+
+        // Интервал делений, например, каждые 1 секунду
+        float interval = 1f;
+        float totalTime = (levelData.music != null) ? levelData.music.length : 60f;
+
+        // Используем BeginGroup, чтобы сместить отрисовку в зависимости от горизонтального скролла
+        GUI.BeginGroup(headerRect);
+        for (float t = 0; t < totalTime; t += interval)
+        {
+            float xPos = t * timeScale - horizontalOffset;
+            // Если деление выходит за пределы видимой области, пропускаем его
+            if (xPos < 0 || xPos > headerRect.width)
+                continue;
+
+            // Вертикальная линия деления
+            Handles.color = Color.white;
+            Handles.DrawLine(new Vector3(xPos, 0), new Vector3(xPos, headerRect.height));
+
+            // Метка времени
+            GUI.Label(new Rect(xPos + 2, 0, 30, headerRect.height), t.ToString("F0") + "s");
+        }
+
+        // Отрисовка вертикального курсора текущей позиции
+        float currentX = timelinePosition * timeScale - horizontalOffset;
+        if (currentX >= 0 && currentX <= headerRect.width)
+        {
+            Handles.color = Color.red;
+            Handles.DrawLine(new Vector3(currentX, 0), new Vector3(currentX, headerRect.height));
+        }
+        GUI.EndGroup();
+    }
+
+    /// <summary>
+    /// Отрисовывает фон дорожек, ритмические метки и горизонтальные линии.
+    /// При отрисовке вертикальных линий (тактов и долей) применяется смещение, указанное в audioOffset.
+    /// </summary>
     void DrawTimelineBackground(Rect timelineRect)
     {
         // Фон таймлайна
         EditorGUI.DrawRect(timelineRect, new Color(0.2f, 0.2f, 0.2f));
 
-        // Рисуем дорожки с чередующимися оттенками
+        // Дорожки с чередующимися оттенками
         for (int i = 0; i < trackCount; i++)
         {
             Rect laneRect = new Rect(timelineRect.x, timelineRect.y + i * trackHeight, timelineRect.width, trackHeight);
             Color laneColor = (i % 2 == 0) ? new Color(0.3f, 0.3f, 0.3f) : new Color(0.35f, 0.35f, 0.35f);
             EditorGUI.DrawRect(laneRect, laneColor);
 
-            // Рисуем границы дорожки
+            // Границы дорожки
             Handles.color = Color.black;
             Handles.DrawLine(new Vector3(laneRect.x, laneRect.y), new Vector3(laneRect.x + laneRect.width, laneRect.y));
             Handles.DrawLine(new Vector3(laneRect.x, laneRect.y + laneRect.height), new Vector3(laneRect.x + laneRect.width, laneRect.y + laneRect.height));
         }
 
-            // Рисуем ритмические метки только если есть данные о ритме
-    if (levelData.bpm > 0 && levelData.beatsPerBar > 0)
-    {
-        float secondsPerBeat = 60f / levelData.bpm;
-        float secondsPerSubdivision = secondsPerBeat / levelData.subdivisions;
-        float totalTime = levelData.music != null ? levelData.music.length : 60f;
-
-        // Рассчитываем общее количество подразделений
-        int totalSubdivisions = Mathf.CeilToInt(totalTime / secondsPerSubdivision);
-
-        for (int i = 0; i < totalSubdivisions; i++)
+        // Ритмические метки (вертикальные линии) с учетом audioOffset
+        if (levelData.bpm > 0 && levelData.beatsPerBar > 0)
         {
-            float time = i * secondsPerSubdivision;
-            float xPos = timelineRect.x + time * timeScale;
-            
-            // Определяем тип линии
-            bool isBar = (i % (levelData.beatsPerBar * levelData.subdivisions)) == 0;
-            bool isBeat = (i % levelData.subdivisions) == 0;
-            
-            Color lineColor = isBar ? Color.yellow : 
-                            isBeat ? Color.red : 
-                            new Color(0.5f, 0.5f, 0.5f, 0.3f);
-            float lineHeight = isBar ? trackHeight : 
-                             isBeat ? trackHeight * 0.75f : 
-                             trackHeight * 0.5f;
-            float lineWidth = isBar ? 2f : 1f;
+            float secondsPerBeat = 60f / levelData.bpm;
+            float secondsPerSubdivision = secondsPerBeat / levelData.subdivisions;
+            float totalTime = (levelData.music != null) ? levelData.music.length : 60f;
+            // Эффективное время для отрисовки линий (начинаем с audioOffset)
+            float effectiveTotalTime = totalTime - levelData.audioOffset;
+            int totalSubdivisions = Mathf.CeilToInt(effectiveTotalTime / secondsPerSubdivision);
 
-            // Рисуем линию через Handles
-            Handles.color = lineColor;
-            Vector2 start = new Vector2(xPos, timelineRect.y);
-            Vector2 end = new Vector2(xPos, timelineRect.y + lineHeight);
-            Handles.DrawLine(start, end, lineWidth);
+            for (int i = 0; i < totalSubdivisions; i++)
+            {
+                // Расчет времени для линии: первая линия начинается в audioOffset
+                float gridTime = levelData.audioOffset + i * secondsPerSubdivision;
+                float xPos = timelineRect.x + gridTime * timeScale;
+
+                bool isBar = (i % (levelData.beatsPerBar * levelData.subdivisions)) == 0;
+                bool isBeat = (i % levelData.subdivisions) == 0;
+                
+                Color lineColor = isBar ? Color.yellow : isBeat ? Color.red : new Color(0.5f, 0.5f, 0.5f, 0.3f);
+                float lineHeight = timelineRect.height;
+                float lineWidth = isBar ? 2f : 1f;
+
+                Handles.color = lineColor;
+                Vector2 start = new Vector2(xPos, timelineRect.y);
+                Vector2 end = new Vector2(xPos, timelineRect.y + lineHeight);
+                Handles.DrawLine(start, end, lineWidth);
+            }
         }
     }
-    }
 
+    /// <summary>
+    /// Отрисовывает ноты на дорожках.
+    /// </summary>
     void DrawNotes(Rect timelineRect)
     {
         if (levelData.notes != null)
@@ -146,7 +194,7 @@ public class LevelEditorWindow : EditorWindow
             for (int i = 0; i < levelData.notes.Length; i++)
             {
                 NoteData note = levelData.notes[i];
-                // Пропускаем ноты, принадлежащие несуществующим дорожкам
+                // Если номер дорожки невалидный, пропускаем ноту
                 if (note.trackIndex < 0 || note.trackIndex >= trackCount)
                     continue;
 
@@ -157,7 +205,7 @@ public class LevelEditorWindow : EditorWindow
 
                 EditorGUI.DrawRect(noteRect, Color.green);
 
-                // Рисуем рамку ноты
+                // Рамка ноты
                 Handles.color = Color.black;
                 Handles.DrawAAPolyLine(2f, new Vector3(noteRect.x, noteRect.y), new Vector3(noteRect.x + noteRect.width, noteRect.y));
                 Handles.DrawAAPolyLine(2f, new Vector3(noteRect.x, noteRect.y + noteRect.height), new Vector3(noteRect.x + noteRect.width, noteRect.y + noteRect.height));
@@ -167,13 +215,29 @@ public class LevelEditorWindow : EditorWindow
         }
     }
 
+    /// <summary>
+    /// Отрисовывает вертикальную полосу, показывающую текущую позицию (курсора) на дорожках.
+    /// </summary>
+    void DrawTimelineCursor(Rect timelineRect)
+    {
+        float cursorX = timelineRect.x + timelinePosition * timeScale;
+        if (cursorX >= timelineRect.x && cursorX <= timelineRect.x + timelineRect.width)
+        {
+            Handles.color = Color.red;
+            Handles.DrawLine(new Vector3(cursorX, timelineRect.y), new Vector3(cursorX, timelineRect.y + timelineRect.height));
+        }
+    }
+
+    /// <summary>
+    /// Обрабатывает события мыши для управления нотами (перемещение, изменение размера, добавление, удаление).
+    /// </summary>
     void HandleNoteEvents(Rect timelineRect)
     {
         Event e = Event.current;
         if (e == null)
             return;
 
-        // Удаление ноты при правом клике
+        // Удаление ноты правым кликом
         if (e.type == EventType.MouseDown && e.button == 1)
         {
             if (levelData.notes != null)
@@ -199,7 +263,7 @@ public class LevelEditorWindow : EditorWindow
             }
         }
 
-        // Левый клик: добавление, перемещение, изменение размера
+        // Левый клик: выбор/перемещение/изменение размера или добавление ноты
         if (e.type == EventType.MouseDown && e.button == 0)
         {
             bool clickedOnNote = false;
@@ -216,7 +280,7 @@ public class LevelEditorWindow : EditorWindow
                     if (noteRect.Contains(e.mousePosition))
                     {
                         clickedOnNote = true;
-                        // Если курсор рядом с правым краем – начинаем изменение длительности
+                        // Если курсор рядом с правым краем — начинаем изменение размера
                         float distToEdge = Mathf.Abs(e.mousePosition.x - (noteRect.x + noteRect.width));
                         if (distToEdge < resizeMargin)
                         {
@@ -227,7 +291,7 @@ public class LevelEditorWindow : EditorWindow
                         }
                         else
                         {
-                            // Начинаем перетаскивание ноты
+                            // Начало перетаскивания ноты
                             draggingNoteIndex = i;
                             isResizing = false;
                             dragOffset = e.mousePosition - new Vector2(noteRect.x, noteRect.y);
@@ -237,7 +301,7 @@ public class LevelEditorWindow : EditorWindow
                     }
                 }
             }
-            // Если клик в пустой области таймлайна – добавляем новую ноту
+            // Если кликнули в пустой области, добавляем новую ноту
             if (!clickedOnNote && timelineRect.Contains(e.mousePosition))
             {
                 float clickedTime = (e.mousePosition.x - timelineRect.x) / timeScale;
@@ -248,7 +312,7 @@ public class LevelEditorWindow : EditorWindow
             }
         }
 
-        // Перетаскивание и изменение размера при зажатой левой кнопке
+        // Перетаскивание и изменение размера ноты
         if (e.type == EventType.MouseDrag && e.button == 0 && draggingNoteIndex != -1)
         {
             Vector2 mousePos = e.mousePosition;
@@ -283,6 +347,9 @@ public class LevelEditorWindow : EditorWindow
         }
     }
 
+    /// <summary>
+    /// Добавляет новую ноту на заданном времени и дорожке.
+    /// </summary>
     void AddNoteAt(float time, int track)
     {
         if (levelData.notes == null)
@@ -300,6 +367,9 @@ public class LevelEditorWindow : EditorWindow
         EditorUtility.SetDirty(levelData);
     }
 
+    /// <summary>
+    /// Переключает воспроизведение аудио.
+    /// </summary>
     void TogglePlayback()
     {
         if (previewSource == null)

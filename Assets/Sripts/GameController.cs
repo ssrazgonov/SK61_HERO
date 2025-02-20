@@ -19,18 +19,17 @@ public class GameController : MonoBehaviour
     public float highlightDuration = 0.2f;
 
     public TMP_Text scoreText;
-
     public TMP_Text scoreTextEnd;
     public int score = 0;  
 
-        public float hitZoneMoveDistance = 0.2f;      
+    public float hitZoneMoveDistance = 0.2f;      
     public float hitZoneAnimDuration = 0.1f;   
 
-        private Vector3[] basePositions;
+    private Vector3[] basePositions;
     private Coroutine[] activeAnimations;
 
     void Start() {
-                basePositions = new Vector3[hitZones.Length];
+        basePositions = new Vector3[hitZones.Length];
         activeAnimations = new Coroutine[hitZones.Length];
         for (int i = 0; i < hitZones.Length; i++)
         {
@@ -40,7 +39,7 @@ public class GameController : MonoBehaviour
 
     void Update()
     {
-        // Обрабатываем нажатия клавиш для каждой полосы (A, S, D, F)
+        // При нажатии на клавиши для каждой полосы запускается анимация и проверка попадания.
         if (Input.GetKeyDown(KeyCode.A))
         {
             StartCoroutine(AnimateHitZone(0));
@@ -63,19 +62,17 @@ public class GameController : MonoBehaviour
         }
     }
 
-    // Метод проверки попадания по ноте в заданной полосе
+    // Метод перебирает все активные ноты в сцене и ищет ближайшую ноту для заданной полосы.
+    // Если расстояние между нотой и зоной попадания меньше hitThreshold, нота засчитывается.
     void CheckHit(int laneIndex)
     {
         Note closestNote = null;
         float closestDistance = hitThreshold;
-        // Перебираем все активные ноты
         foreach (Note note in FindObjectsOfType<Note>())
         {
-            Debug.Log(note.laneIndex + "линий ноты");
             if (note.laneIndex == laneIndex)
             {
-                
-                // Вычисляем расстояние между нотой и зоной попадания по оси Y
+                // Считаем расстояние по оси Z (предполагается, что именно она отвечает за движение нот к hitZone)
                 float distance = Mathf.Abs(note.transform.position.z - hitZones[laneIndex].position.z);
                 if (distance < closestDistance)
                 {
@@ -84,7 +81,6 @@ public class GameController : MonoBehaviour
                 }
             }
         }
-        // Если нота найдена и находится в пределах допустимого расстояния, засчитываем попадание
         if (closestNote != null)
         {
             closestNote.Hit();
@@ -93,24 +89,13 @@ public class GameController : MonoBehaviour
         }
     }
 
-
-        void UpdateScoreUI()
+    void UpdateScoreUI()
     {
         if (scoreText != null)
         {
-            scoreText.text = "" + score;
-            scoreTextEnd.text = "" + score;
+            scoreText.text = score.ToString();
+            scoreTextEnd.text = score.ToString();
         }
-    }
-
-    void AnimateLane(int laneIndex)
-    {
-        if (activeAnimations[laneIndex] != null)
-        {
-            StopCoroutine(activeAnimations[laneIndex]);
-            hitZones[laneIndex].position = basePositions[laneIndex];
-        }
-        activeAnimations[laneIndex] = StartCoroutine(AnimateHitZone(laneIndex));
     }
 
     IEnumerator AnimateHitZone(int laneIndex)
@@ -135,6 +120,5 @@ public class GameController : MonoBehaviour
             yield return null;
         }
         hitZones[laneIndex].position = originalPos;
-        activeAnimations[laneIndex] = null;
     }
 }

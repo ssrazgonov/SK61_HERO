@@ -13,11 +13,29 @@ MonoBehaviour:
   m_Name: cross_road_level
   m_EditorClassIdentifier: 
   music: {fileID: 8300000, guid: 7c56ab7d36789c440b2a1fec8bbd78ed, type: 3}
-  bpm: 120
-  startDelay: 2
+  bpm: 140
+  startDelay: 0
   notes:
-  - startTime: 2.984
-    duration: 1
+  - startTime: 51.758
+    duration: 5.16
     trackIndex: 0
+    spawned: 0
+  - startTime: 0.752
+    duration: 0.5
+    trackIndex: 0
+    spawned: 0
+  - startTime: 0.32800016
+    duration: 0.5
+    trackIndex: 0
+    spawned: 0
+  - startTime: 1.168
+    duration: 0.5
+    trackIndex: 0
+    spawned: 0
+  - startTime: 1.616
+    duration: 0.5
+    trackIndex: 0
+    spawned: 0
   beatsPerBar: 4
   subdivisions: 4
+  audioOffset: -1.38

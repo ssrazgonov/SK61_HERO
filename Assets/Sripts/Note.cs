@@ -11,6 +11,11 @@ public class Note : MonoBehaviour
     // Плавное вращение ноты для красивого визуального эффекта
     public float rotationSpeed = 100f;
 
+    public float startTime; // Время начала ноты в секундах
+    public float duration; // Длительность ноты в секундах
+
+    public bool isHit = false;
+
     void Update()
     {
         // Перемещаем ноту вниз с заданной скоростью
@@ -33,5 +38,10 @@ public class Note : MonoBehaviour
         }
         // Уничтожаем ноту
         Destroy(gameObject);
+    }
+
+    public void Miss()
+    {
+
     }
 }

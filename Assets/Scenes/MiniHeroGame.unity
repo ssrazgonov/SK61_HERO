@@ -517,20 +517,20 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   song: {fileID: 1354793728}
-  bpm: 125
+  levelData: {fileID: 11400000, guid: c32636f131c310344a2967fc37b4a4b1, type: 2}
   notePrefab: {fileID: 5034211983797544937, guid: bdeaf420a0f78ad4e8af6b2dfd7a25d8, type: 3}
   lanes:
   - {fileID: 2970317641784627576}
   - {fileID: 1311385200}
   - {fileID: 811439599}
-  noteSpeed: 6
+  noteSpeed: 1
   laneHighlights: []
   beatColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   normalColor: {r: 1, g: 1, b: 1, a: 1}
   highlightDuration: 0.1
-  skipChance: 0.5
-  started: 0
   endGamePanel: {fileID: 795518247}
+  spawnOffsetDistance: 10
+  started: 0
   gameController: {fileID: 207513673}
 --- !u!4 &207513675
 Transform:
