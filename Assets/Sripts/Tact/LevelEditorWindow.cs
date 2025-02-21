@@ -15,13 +15,20 @@ public class LevelEditorWindow : EditorWindow
     // Параметры таймлайна
     private int trackCount = 1;               // Изначальное количество дорожек
     private const float trackHeight = 50f;      // Высота каждой дорожки (в пикселях)
-    private const float timeScale = 100f;       // Масштаб: пикселей на секунду
+    // Заменяем константу timeScale на свойство
+    private float timeScale  => baseTimeScale * zoomLevel;    // Масштаб: пикселей на секунду
 
     // Перетаскивание и изменение размера ноты
     private int draggingNoteIndex = -1;       // -1 означает, что нота не перетаскивается
     private bool isResizing = false;          // Режим изменения длительности ноты
     private Vector2 dragOffset = Vector2.zero;// Смещение курсора внутри ноты при начале перетаскивания
     private const float resizeMargin = 5f;      // Область от правого края ноты для начала изменения размера
+
+        // Добавляем в начало класса
+    private float zoomLevel = 1f;
+    private const float minZoom = 0.2f;
+    private const float maxZoom = 4f;
+    private const float baseTimeScale = 100f; // Базовый масштаб 100px/сек
 
     [MenuItem("Window/Rhythm Level Editor")]
     public static void ShowWindow()
@@ -44,6 +51,15 @@ public class LevelEditorWindow : EditorWindow
         if (GUILayout.Button("Добавить дорожку"))
             trackCount++;
 
+        EditorGUILayout.EndHorizontal();
+
+        // Добавляем в метод OnGUI после контролов воспроизведения
+        EditorGUILayout.BeginHorizontal();
+        GUILayout.FlexibleSpace();
+        EditorGUILayout.LabelField("Zoom:", GUILayout.Width(40));
+        zoomLevel = EditorGUILayout.Slider(zoomLevel, minZoom, maxZoom, GUILayout.Width(150));
+        if (GUILayout.Button("Reset Zoom", GUILayout.Width(80)))
+            zoomLevel = 1f;
         EditorGUILayout.EndHorizontal();
 
         EditorGUILayout.LabelField("Количество дорожек: " + trackCount);
@@ -122,7 +138,7 @@ public class LevelEditorWindow : EditorWindow
         }
 
         // Отрисовка вертикального курсора текущей позиции
-        float currentX = timelinePosition * timeScale - horizontalOffset;
+        float currentX = (timelinePosition - levelData.audioOffset) * timeScale - horizontalOffset;
         if (currentX >= 0 && currentX <= headerRect.width)
         {
             Handles.color = Color.red;
@@ -165,9 +181,12 @@ public class LevelEditorWindow : EditorWindow
 
             for (int i = 0; i < totalSubdivisions; i++)
             {
-                // Расчет времени для линии: первая линия начинается в audioOffset
-                float gridTime = levelData.audioOffset + i * secondsPerSubdivision;
-                float xPos = timelineRect.x + gridTime * timeScale;
+                float visualGridTime = i * secondsPerSubdivision;
+                float realGridTime = visualGridTime + levelData.audioOffset;
+                
+                if (realGridTime > totalTime) continue;
+                
+                float xPos = timelineRect.x + visualGridTime * timeScale;
 
                 bool isBar = (i % (levelData.beatsPerBar * levelData.subdivisions)) == 0;
                 bool isBeat = (i % levelData.subdivisions) == 0;
@@ -182,6 +201,26 @@ public class LevelEditorWindow : EditorWindow
                 Handles.DrawLine(start, end, lineWidth);
             }
         }
+
+                // В DrawTimelineBackground после отрисовки меток:
+        if (Event.current.type == EventType.MouseMove)
+        {
+            // Обновляем превью позиции при движении мыши
+            Repaint();
+        }
+
+        // Подсветка ближайшей позиции сетки
+        Vector2 mousePos = Event.current.mousePosition;
+        if (timelineRect.Contains(mousePos))
+        {
+            float rawTime = (mousePos.x - timelineRect.x) / timeScale;
+            float snappedTime = SnapToGrid(rawTime);
+            float xPos = timelineRect.x + snappedTime * timeScale;
+            
+            Handles.color = new Color(1, 1, 1, 0.3f);
+            Handles.DrawLine(new Vector3(xPos, timelineRect.y), 
+                        new Vector3(xPos, timelineRect.y + timelineRect.height));
+        }
     }
 
     /// <summary>
@@ -194,11 +233,13 @@ public class LevelEditorWindow : EditorWindow
             for (int i = 0; i < levelData.notes.Length; i++)
             {
                 NoteData note = levelData.notes[i];
+
                 // Если номер дорожки невалидный, пропускаем ноту
                 if (note.trackIndex < 0 || note.trackIndex >= trackCount)
                     continue;
 
-                float noteX = timelineRect.x + note.startTime * timeScale;
+                float visualNoteTime = note.startTime - levelData.audioOffset;
+                float noteX = timelineRect.x + visualNoteTime * timeScale;
                 float laneY = timelineRect.y + note.trackIndex * trackHeight;
                 float noteWidth = Mathf.Max(note.duration * timeScale, 10f);
                 Rect noteRect = new Rect(noteX, laneY + 2, noteWidth, trackHeight - 4);
@@ -220,11 +261,13 @@ public class LevelEditorWindow : EditorWindow
     /// </summary>
     void DrawTimelineCursor(Rect timelineRect)
     {
-        float cursorX = timelineRect.x + timelinePosition * timeScale;
+        float visualCursorTime = timelinePosition - levelData.audioOffset;
+        float cursorX = timelineRect.x + visualCursorTime * timeScale;
         if (cursorX >= timelineRect.x && cursorX <= timelineRect.x + timelineRect.width)
         {
             Handles.color = Color.red;
-            Handles.DrawLine(new Vector3(cursorX, timelineRect.y), new Vector3(cursorX, timelineRect.y + timelineRect.height));
+            Handles.DrawLine(new Vector3(cursorX, timelineRect.y), 
+                        new Vector3(cursorX, timelineRect.y + timelineRect.height));
         }
     }
 
@@ -245,10 +288,13 @@ public class LevelEditorWindow : EditorWindow
                 for (int i = 0; i < levelData.notes.Length; i++)
                 {
                     NoteData note = levelData.notes[i];
-                    float noteX = timelineRect.x + note.startTime * timeScale;
+                    // Исправлено: использование визуального времени для позиционирования
+                    float visualNoteTime = note.startTime - levelData.audioOffset;
+                    float noteX = timelineRect.x + visualNoteTime * timeScale;
                     float laneY = timelineRect.y + note.trackIndex * trackHeight;
                     float noteWidth = Mathf.Max(note.duration * timeScale, 10f);
                     Rect noteRect = new Rect(noteX, laneY + 2, noteWidth, trackHeight - 4);
+                    
                     if (noteRect.Contains(e.mousePosition))
                     {
                         List<NoteData> noteList = new List<NoteData>(levelData.notes);
@@ -272,7 +318,9 @@ public class LevelEditorWindow : EditorWindow
                 for (int i = 0; i < levelData.notes.Length; i++)
                 {
                     NoteData note = levelData.notes[i];
-                    float noteX = timelineRect.x + note.startTime * timeScale;
+                    // Исправлено: использование визуального времени
+                    float visualNoteTime = note.startTime - levelData.audioOffset;
+                    float noteX = timelineRect.x + visualNoteTime * timeScale;
                     float laneY = timelineRect.y + note.trackIndex * trackHeight;
                     float noteWidth = Mathf.Max(note.duration * timeScale, 10f);
                     Rect noteRect = new Rect(noteX, laneY + 2, noteWidth, trackHeight - 4);
@@ -280,7 +328,7 @@ public class LevelEditorWindow : EditorWindow
                     if (noteRect.Contains(e.mousePosition))
                     {
                         clickedOnNote = true;
-                        // Если курсор рядом с правым краем — начинаем изменение размера
+                        // Исправлено: расчет с учетом визуального времени
                         float distToEdge = Mathf.Abs(e.mousePosition.x - (noteRect.x + noteRect.width));
                         if (distToEdge < resizeMargin)
                         {
@@ -291,23 +339,27 @@ public class LevelEditorWindow : EditorWindow
                         }
                         else
                         {
-                            // Начало перетаскивания ноты
                             draggingNoteIndex = i;
                             isResizing = false;
-                            dragOffset = e.mousePosition - new Vector2(noteRect.x, noteRect.y);
+                            // Исправлено: расчет смещения с учетом визуального времени
+                            dragOffset = e.mousePosition - new Vector2(noteX, laneY + 2);
                             e.Use();
                             break;
                         }
                     }
                 }
             }
-            // Если кликнули в пустой области, добавляем новую ноту
             if (!clickedOnNote && timelineRect.Contains(e.mousePosition))
             {
-                float clickedTime = (e.mousePosition.x - timelineRect.x) / timeScale;
+                // Исправлено: правильный расчет реального времени с привязкой
+                float rawVisualTime = (e.mousePosition.x - timelineRect.x) / timeScale;
+                float snappedVisualTime = SnapToGrid(rawVisualTime);
+                float realTime = snappedVisualTime + levelData.audioOffset;
+                
                 int clickedTrack = Mathf.FloorToInt((e.mousePosition.y - timelineRect.y) / trackHeight);
                 clickedTrack = Mathf.Clamp(clickedTrack, 0, trackCount - 1);
-                AddNoteAt(clickedTime, clickedTrack);
+                
+                AddNoteAt(realTime, clickedTrack);
                 e.Use();
             }
         }
@@ -317,21 +369,27 @@ public class LevelEditorWindow : EditorWindow
         {
             Vector2 mousePos = e.mousePosition;
             NoteData note = levelData.notes[draggingNoteIndex];
+            
             if (isResizing)
             {
-                float noteX = timelineRect.x + note.startTime * timeScale;
-                float newDuration = (mousePos.x - noteX) / timeScale;
-                note.duration = Mathf.Max(newDuration, 0.1f);
+                // Исправлено: расчет длительности с привязкой к сетке
+                float visualStart = note.startTime - levelData.audioOffset;
+                float rawDuration = (mousePos.x - (timelineRect.x + visualStart * timeScale)) / timeScale;
+                float snappedDuration = SnapToGrid(rawDuration);
+                note.duration = Mathf.Max(snappedDuration, 0.1f);
                 EditorUtility.SetDirty(levelData);
             }
             else
             {
-                Vector2 newPos = mousePos - dragOffset;
-                float newStartTime = (newPos.x - timelineRect.x) / timeScale;
-                newStartTime = Mathf.Max(0, newStartTime);
-                int newTrack = Mathf.FloorToInt((newPos.y - timelineRect.y) / trackHeight);
+                // Исправлено: расчет позиции с привязкой к сетке
+                float rawVisualTime = (mousePos.x - dragOffset.x - timelineRect.x) / timeScale;
+                float snappedVisualTime = SnapToGrid(rawVisualTime);
+                float realTime = snappedVisualTime + levelData.audioOffset;
+                
+                int newTrack = Mathf.FloorToInt((mousePos.y - dragOffset.y - timelineRect.y) / trackHeight);
                 newTrack = Mathf.Clamp(newTrack, 0, trackCount - 1);
-                note.startTime = newStartTime;
+                
+                note.startTime = Mathf.Max(realTime, 0f);
                 note.trackIndex = newTrack;
                 EditorUtility.SetDirty(levelData);
             }
@@ -341,11 +399,18 @@ public class LevelEditorWindow : EditorWindow
 
         if (e.type == EventType.MouseUp && e.button == 0 && draggingNoteIndex != -1)
         {
+            // Финализация с привязкой к сетке
+            NoteData note = levelData.notes[draggingNoteIndex];
+            note.startTime = SnapToGrid(note.startTime - levelData.audioOffset) + levelData.audioOffset;
+            note.duration = SnapToGrid(note.duration);
+            EditorUtility.SetDirty(levelData);
+            
             draggingNoteIndex = -1;
             isResizing = false;
             e.Use();
         }
     }
+
 
     /// <summary>
     /// Добавляет новую ноту на заданном времени и дорожке.
@@ -355,16 +420,36 @@ public class LevelEditorWindow : EditorWindow
         if (levelData.notes == null)
             levelData.notes = new NoteData[0];
 
+        // Применяем привязку перед добавлением
+        float snappedTime = SnapToGrid(time - levelData.audioOffset) + levelData.audioOffset;
+        float noteDuration = SnapToGrid(CalculateBeatDuration());
+
         NoteData newNote = new NoteData
         {
-            startTime = time,
-            duration = 0.5f,
+            startTime = snappedTime,
+            duration = noteDuration,
             trackIndex = track
         };
 
         Array.Resize(ref levelData.notes, levelData.notes.Length + 1);
         levelData.notes[levelData.notes.Length - 1] = newNote;
         EditorUtility.SetDirty(levelData);
+    }
+
+    float SnapToGrid(float rawVisualTime)
+    {
+        float beatDuration = CalculateBeatDuration();
+        return Mathf.Round(rawVisualTime / beatDuration) * beatDuration;
+    }
+
+    float CalculateBeatDuration()
+    {
+        // Защита от деления на ноль
+        if (levelData.bpm <= 0 || levelData.subdivisions <= 0)
+            return 0.5f; // Значение по умолчанию при невалидных настройках
+        
+        // Длительность одной доли в секундах
+        return (60f / levelData.bpm) / levelData.subdivisions;
     }
 
     /// <summary>

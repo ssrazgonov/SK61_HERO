@@ -16,26 +16,42 @@ MonoBehaviour:
   bpm: 140
   startDelay: 0
   notes:
-  - startTime: 51.758
-    duration: 5.16
-    trackIndex: 0
-    spawned: 0
-  - startTime: 0.752
+  - startTime: 1.008
     duration: 0.5
-    trackIndex: 0
+    trackIndex: 3
+    spawned: 1
+  - startTime: 1.7142857
+    duration: 0.21428572
+    trackIndex: 1
     spawned: 0
-  - startTime: 0.32800016
-    duration: 0.5
-    trackIndex: 0
+  - startTime: 2.25
+    duration: 0.21428572
+    trackIndex: 1
     spawned: 0
-  - startTime: 1.168
-    duration: 0.5
-    trackIndex: 0
+  - startTime: 2.7857144
+    duration: 0.21428572
+    trackIndex: 1
     spawned: 0
-  - startTime: 1.616
-    duration: 0.5
-    trackIndex: 0
+  - startTime: 3.642857
+    duration: 0.21428572
+    trackIndex: 1
+    spawned: 0
+  - startTime: 0.96428573
+    duration: 0.10714286
+    trackIndex: 1
+    spawned: 0
+  - startTime: 1.1785715
+    duration: 0.10714286
+    trackIndex: 1
+    spawned: 0
+  - startTime: 1.5
+    duration: 0.10714286
+    trackIndex: 1
+    spawned: 0
+  - startTime: 1.5
+    duration: 0.10714286
+    trackIndex: 2
     spawned: 0
   beatsPerBar: 4
   subdivisions: 4
-  audioOffset: -1.38
+  audioOffset: 0
